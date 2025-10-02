@@ -1,0 +1,8 @@
+{
+  "python_version": "3.11",
+  "graphs": {
+    "test-gen-agent": "./main.py:compiled_graph"
+  },
+  "env": ".env",
+  "dependencies": ["."]
+}

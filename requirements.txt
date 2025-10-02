@@ -1,0 +1,6 @@
+langgraph==0.6.8
+zep-cloud==3.4.1
+langchain-openai==0.3.1
+python-dotenv==1.0.0
+typing-extensions==4.12.2
+langsmith>=0.1.0
