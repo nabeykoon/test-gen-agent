@@ -139,3 +139,6 @@ test-gen-agent/
 # OS
 .DS_Store
 Thumbs.db
+
+# LangGraph API data
+.langgraph_api/

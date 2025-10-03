@@ -12,7 +12,6 @@ load_dotenv()
 # State schema - extensible with placeholders
 class AgentState(TypedDict):
     human_message: str
-    sample_story: str  # Optional sample story input from Studio
     validation_status: str  # "valid", "invalid" - placeholder for future validation node
     facts: List[str]
     test_conditions: List[str]  # Or dicts for structure
@@ -33,7 +32,7 @@ llm = AzureChatOpenAI(
 
 # Tester Node: Validates input and searches Zep for facts
 def tester_node(state: AgentState) -> AgentState:
-    human_message = state.get("sample_story", state["human_message"])
+    human_message = state["human_message"]
     if not human_message:
         raise ValueError("human_message is required")
 
@@ -49,30 +48,20 @@ def tester_node(state: AgentState) -> AgentState:
 
     # Zep search
     facts = []
-    print("Starting Zep search")
     try:
         response = zep.graph.search(
             query=human_message,
-            graph_id="pet-store-knowledge",  # Replace with your actual Group ID (same as Graph ID)
+            graph_id="pet-store-knowledge",
             scope="edges",
-            limit=20,  # Increased for more comprehensive facts
-            # min_fact_rating=0.7,  # Temporarily removed - facts may have lower ratings
-            # reranker="mmr",  # Removed - was filtering all facts
-            # mmr_lambda=0.5,  # Removed - was filtering all facts
+            limit=20,
         )
-        print(f"Response edges count: {len(response.edges or [])}")
-        for edge in (response.edges or []):
-            print(f"Edge fact: {getattr(edge, 'fact', 'No fact')}, score: {getattr(edge, 'score', 'No score')}")
         edges = response.edges or []
         facts = [edge.fact for edge in edges if hasattr(edge, 'fact')]
-        print(f"Facts extracted: {facts}")
     except Exception as e:
         errors.append(f"Zep search failed: {str(e)}")
-        print(f"Zep search error: {str(e)}")
 
     return {
         "human_message": state.get("human_message", ""),
-        "sample_story": state.get("sample_story"),
         "validation_status": validation_status,
         "facts": facts,
         "test_conditions": state.get("test_conditions", []),
@@ -84,7 +73,6 @@ def tester_node(state: AgentState) -> AgentState:
 def llm_node(state: AgentState) -> AgentState:
     human_message = state["human_message"]
     facts = state.get("facts", [])
-    print(f"Facts in llm_node: {facts}")
     errors = state.get("errors", [])
 
     # Combine context
@@ -144,7 +132,6 @@ Errors:
 
     return {
         "human_message": state["human_message"],
-        "sample_story": state.get("sample_story"),
         "validation_status": state.get("validation_status", "unknown"),
         "facts": state.get("facts", []),
         "test_conditions": test_conditions,
@@ -163,13 +150,3 @@ compiled_graph = graph.compile()
 
 # Export for LangGraph Studio
 __all__ = ["compiled_graph"]
-# Test Zep access
-if __name__ == "__main__":
-    print("Testing Zep access...")
-    try:
-        response = zep.graph.search(query="test", graph_id="pet-store-knowledge", scope="edges", limit=10)
-        print(f"Found {len(response.edges or [])} edges")
-        for edge in (response.edges or []):
-            print(f"Fact: {edge.fact}")
-    except Exception as e:
-        print(f"Zep error: {e}")
