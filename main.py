@@ -53,9 +53,13 @@ def tester_node(state: AgentState) -> AgentState:
             query=human_message,
             graph_id="pet-store-knowledge",
             scope="edges",
-            limit=20,
+            limit=50,  # Increased to max for better retrieval
+            min_fact_rating=0.3,  # Filter low-quality facts
+            reranker="rrf",  # Use RRF for better ranking
         )
         edges = response.edges or []
+        # Post-filter by score to ensure relevance
+        edges = [e for e in edges if getattr(e, 'score', 0) > 0.5]
         facts = [edge.fact for edge in edges if hasattr(edge, 'fact')]
     except Exception as e:
         errors.append(f"Zep search failed: {str(e)}")
@@ -75,14 +79,15 @@ def llm_node(state: AgentState) -> AgentState:
     facts = state.get("facts", [])
     errors = state.get("errors", [])
 
-    # Combine context
-    context = f"User Story: {human_message}\nRelated Facts: {'; '.join(facts) if facts else 'None found'}"
-
     # Prompt for test generation
     prompt = f"""
-    Generate comprehensive test conditions/scenarios for the following agile user story, considering the related facts from product knowledge.
+    Generate comprehensive test conditions/scenarios for the following agile user story, carefully analysing provided related facts from product knowledge.
 
-    {context}
+    **User Story:**
+    {human_message}
+
+    **Related Facts:**
+    {chr(10).join(f"- {fact}" for fact in facts) if facts else "None found"}
 
     Provide 3-5 detailed test scenarios in the format:
     - Test 1: [Description of test condition]
